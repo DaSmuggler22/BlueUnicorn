@@ -2,7 +2,7 @@ body, html {
     margin: 0;
     padding: 0;
     font-family: 'Avory PE', Arial, sans-serif;
-    background-color: #DDEAF2; /* Light blue background color */
+    background-color: #89ABE3; /* Light blue background color */
     color: #333;
 }
 
@@ -103,7 +103,9 @@ main {
 
 .slideshow-container, .video-container, .quiz-container {
     margin-top: 1em;
-    /* Add styles for .slideshow-container, .video-container, and .quiz-container here */
+    border: 2px solid #10069F; /* Border around containers */
+    border-radius: 5px; /* Rounded corners for containers */
+    overflow: hidden; /* Ensure border radius applies to inner content */
 }
 
 iframe {
@@ -159,6 +161,22 @@ footer {
 
 footer p {
     margin: 0.5em 0;
+}
+
+.language-switcher button {
+    background-color: #10069F;
+    color: white;
+    padding: 0.5em 1em;
+    border: none;
+    cursor: pointer;
+    font-family: 'Mikrobe', Arial, sans-serif;
+    margin-right: 0.5em;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.language-switcher button:hover {
+    background-color: #FF9D6E;
+    transform: scale(1.05);
 }
 
 @media (max-width: 600px) {
