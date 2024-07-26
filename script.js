@@ -1,69 +1,3 @@
-const GITHUB_API_TOKEN = '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';
-const REPO_OWNER = 'DaSmuggler22';
-const REPO_NAME = 'BlueUnicorn';
-const BRANCH = 'main';  // Adjust if you're using a different branch
-const FILE_PATHS = {
-    orders: 'orders.csv',
-    finishedStock: 'finished_stock.csv',
-    batchesCompleted: 'batches_completed.csv',
-    currentInventory: 'current_inventory.csv',
-    reorderThresholds: 'reorder_thresholds.csv',
-    targetStock: 'target_stock.csv'
-};
-
-// Utility function to fetch and update CSV files from GitHub
-async function fetchFileContent(path) {
-    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}?ref=${BRANCH}`, {
-        headers: {
-            Authorization: `token ${GITHUB_API_TOKEN}`,
-            Accept: 'application/vnd.github.v3.raw'
-        }
-    });
-
-    if (response.ok) {
-        return await response.text();
-    } else {
-        throw new Error(`Failed to fetch ${path}: ${response.statusText}`);
-    }
-}
-
-async function updateFileContent(path, content, message) {
-    const sha = await fetchFileSHA(path);
-    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
-        method: 'PUT',
-        headers: {
-            Authorization: `token ${GITHUB_API_TOKEN}`,
-            Accept: 'application/vnd.github.v3+json'
-        },
-        body: JSON.stringify({
-            message,
-            content: btoa(unescape(encodeURIComponent(content))),
-            sha,
-            branch: BRANCH
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error(`Failed to update ${path}: ${response.statusText}`);
-    }
-}
-
-async function fetchFileSHA(path) {
-    const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}?ref=${BRANCH}`, {
-        headers: {
-            Authorization: `token ${GITHUB_API_TOKEN}`,
-            Accept: 'application/vnd.github.v3+json'
-        }
-    });
-
-    if (response.ok) {
-        const data = await response.json();
-        return data.sha;
-    } else {
-        throw new Error(`Failed to fetch SHA for ${path}: ${response.statusText}`);
-    }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('enter-order-btn').addEventListener('click', openOrderForm);
     document.getElementById('enter-batches-btn').addEventListener('click', openBatchForm);
@@ -79,42 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('projection-form').addEventListener('submit', handleProjectionFormSubmit);
     document.getElementById('shipment-form').addEventListener('submit', handleShipmentFormSubmit);
 
-    // Load initial data from GitHub
-    loadData();
+    populateReorderAlerts();
+    populateOrdersToFulfill();
+    populateFinishedStock();
+    populateBatchesCompleted();
 });
-
-async function loadData() {
-    try {
-        const orders = await fetchFileContent(FILE_PATHS.orders);
-        const finishedStock = await fetchFileContent(FILE_PATHS.finishedStock);
-        const batchesCompleted = await fetchFileContent(FILE_PATHS.batchesCompleted);
-        const currentInventory = await fetchFileContent(FILE_PATHS.currentInventory);
-        const reorderThresholds = await fetchFileContent(FILE_PATHS.reorderThresholds);
-        const targetStock = await fetchFileContent(FILE_PATHS.targetStock);
-
-        // Parse the CSV content and populate the tables
-        populateOrdersToFulfill(parseCSV(orders));
-        populateFinishedStock(parseCSV(finishedStock));
-        populateBatchesCompleted(parseCSV(batchesCompleted));
-        populateCurrentInventory(parseCSV(currentInventory));
-        populateReorderThresholds(parseCSV(reorderThresholds));
-        populateTargetStock(parseCSV(targetStock));
-    } catch (error) {
-        console.error('Error loading data:', error);
-    }
-}
-
-function parseCSV(csv) {
-    const lines = csv.trim().split('\n');
-    const headers = lines[0].split(',');
-    return lines.slice(1).map(line => {
-        const values = line.split(',');
-        return headers.reduce((obj, header, index) => {
-            obj[header] = values[index];
-            return obj;
-        }, {});
-    });
-}
 
 function openOrderForm() {
     document.getElementById('order-form-container').style.display = 'flex';
@@ -124,7 +27,7 @@ function closeOrderForm() {
     document.getElementById('order-form-container').style.display = 'none';
 }
 
-async function handleOrderFormSubmit(event) {
+function handleOrderFormSubmit(event) {
     event.preventDefault();
     const vendor = document.getElementById('vendor').value;
     const numBars = document.getElementById('numBars').value;
@@ -133,11 +36,8 @@ async function handleOrderFormSubmit(event) {
     const orderNumber = ordersToFulfill.length + 1;
     ordersToFulfill.push({ orderNumber, vendor, numBars, shipmentDate });
 
-    // Update GitHub file
-    await updateFileContent(FILE_PATHS.orders, generateCSV(ordersToFulfill), 'Update orders');
-
     closeOrderForm();
-    populateOrdersToFulfill(ordersToFulfill);
+    populateOrdersToFulfill();
 }
 
 function openBatchForm() {
@@ -148,7 +48,7 @@ function closeBatchForm() {
     document.getElementById('batch-form-container').style.display = 'none';
 }
 
-async function handleBatchFormSubmit(event) {
+function handleBatchFormSubmit(event) {
     event.preventDefault();
     const flavor = document.getElementById('flavor').value;
     const quantity = document.getElementById('quantity').value;
@@ -156,12 +56,8 @@ async function handleBatchFormSubmit(event) {
 
     batchesCompleted.push({ flavor, quantity, date });
     updateCurrentInventory(flavor, quantity);
-
-    // Update GitHub file
-    await updateFileContent(FILE_PATHS.batchesCompleted, generateCSV(batchesCompleted), 'Update batches completed');
-
     closeBatchForm();
-    populateBatchesCompleted(batchesCompleted);
+    populateBatchesCompleted();
 }
 
 function openAuditForm() {
@@ -172,16 +68,12 @@ function closeAuditForm() {
     document.getElementById('audit-form-container').style.display = 'none';
 }
 
-async function handleAuditFormSubmit(event) {
+function handleAuditFormSubmit(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
     for (let [key, value] of formData.entries()) {
         currentInventory[key] = parseFloat(value);
     }
-
-    // Update GitHub file
-    await updateFileContent(FILE_PATHS.currentInventory, generateCSV(Object.entries(currentInventory).map(([key, value]) => ({ key, value }))), 'Update current inventory');
-
     closeAuditForm();
     populateReorderAlerts();
 }
@@ -194,7 +86,7 @@ function closeConsumptionForm() {
     document.getElementById('consumption-form-container').style.display = 'none';
 }
 
-async function handleConsumptionFormSubmit(event) {
+function handleConsumptionFormSubmit(event) {
     event.preventDefault();
     const startDate = document.getElementById('start-date').value;
     const endDate = document.getElementById('end-date').value;
@@ -228,7 +120,7 @@ function closeProjectionForm() {
     document.getElementById('projection-form-container').style.display = 'none';
 }
 
-async function handleProjectionFormSubmit(event) {
+function handleProjectionFormSubmit(event) {
     event.preventDefault();
     const projectedOrders = document.getElementById('projected-orders').value.split(',').reduce((acc, curr) => {
         const [flavor, quantity] = curr.split(':').map(s => s.trim());
@@ -261,7 +153,7 @@ function closeShipmentForm() {
     document.getElementById('shipment-form-container').style.display = 'none';
 }
 
-async function handleShipmentFormSubmit(event) {
+function handleShipmentFormSubmit(event) {
     event.preventDefault();
     const orderNumber = document.getElementById('order-number').value;
 
@@ -271,11 +163,8 @@ async function handleShipmentFormSubmit(event) {
         ordersToFulfill = ordersToFulfill.filter(o => o.orderNumber != orderNumber);
     }
 
-    // Update GitHub file
-    await updateFileContent(FILE_PATHS.orders, generateCSV(ordersToFulfill), 'Update orders');
-
     closeShipmentForm();
-    populateOrdersToFulfill(ordersToFulfill);
+    populateOrdersToFulfill();
     populateFinishedStock();
 }
 
@@ -297,23 +186,17 @@ function updateFinishedStock(vendor, numBars) {
 
 function getIngredientsUsage(flavor) {
     const usage = {
-        "Mint Chocolate": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesAndCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinPro: 0.001, SunflowerPro: 0.001, ShippingBoxes: 1, CartonsRasp: 12, CartonsMint: 12, CartonsChoc: 12, WrappersRasp: 120, WrappersMint: 120, WrappersChoc: 120, LabelStickersR: 1, LabelStickersM: 1, LabelStickersC: 1 },
-        "Raspberry": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesAndCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinPro: 0.001, SunflowerPro: 0.001, ShippingBoxes: 1, CartonsRasp: 12, CartonsMint: 12, CartonsChoc: 12, WrappersRasp: 120, WrappersMint: 120, WrappersChoc: 120, LabelStickersR: 1, LabelStickersM: 1, LabelStickersC: 1 },
-        "Double Chocolate": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesAndCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinPro: 0.001, SunflowerPro: 0.001, ShippingBoxes: 1, CartonsRasp: 12, CartonsMint: 12, CartonsChoc: 12, WrappersRasp: 120, WrappersMint: 120, WrappersChoc: 120, LabelStickersR: 1, LabelStickersM: 1, LabelStickersC: 1 },
+        "Mint": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
+        "Raspberry": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
+        "Chocolate": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 }
     };
     return usage[flavor];
 }
 
-function generateCSV(data) {
-    const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => Object.values(row).join(','));
-    return [headers, ...rows].join('\n');
-}
-
-function populateOrdersToFulfill(orders) {
+function populateOrdersToFulfill() {
     const tbody = document.getElementById('orders-to-fulfill').querySelector('tbody');
     tbody.innerHTML = '';
-    orders.forEach(order => {
+    ordersToFulfill.forEach(order => {
         const row = tbody.insertRow();
         row.insertCell(0).innerText = order.orderNumber;
         row.insertCell(1).innerText = order.vendor;
@@ -322,29 +205,18 @@ function populateOrdersToFulfill(orders) {
         const actionsCell = row.insertCell(4);
         const deleteButton = document.createElement('button');
         deleteButton.innerText = 'Delete';
-        deleteButton.addEventListener('click', async () => {
+        deleteButton.addEventListener('click', () => {
             ordersToFulfill = ordersToFulfill.filter(o => o.orderNumber !== order.orderNumber);
-            await updateFileContent(FILE_PATHS.orders, generateCSV(ordersToFulfill), 'Update orders');
-            populateOrdersToFulfill(ordersToFulfill);
+            populateOrdersToFulfill();
         });
         actionsCell.appendChild(deleteButton);
     });
 }
 
-function populateFinishedStock(stock) {
-    const tbody = document.getElementById('finished-stock').querySelector('tbody');
-    tbody.innerHTML = '';
-    stock.forEach(item => {
-        const row = tbody.insertRow();
-        row.insertCell(0).innerText = item.flavor;
-        row.insertCell(1).innerText = item.numBars;
-    });
-}
-
-function populateBatchesCompleted(batches) {
+function populateBatchesCompleted() {
     const tbody = document.getElementById('batches-completed').querySelector('tbody');
     tbody.innerHTML = '';
-    batches.forEach(batch => {
+    batchesCompleted.forEach(batch => {
         const row = tbody.insertRow();
         row.insertCell(0).innerText = batch.flavor;
         row.insertCell(1).innerText = batch.quantity;
@@ -352,34 +224,21 @@ function populateBatchesCompleted(batches) {
         const actionsCell = row.insertCell(3);
         const deleteButton = document.createElement('button');
         deleteButton.innerText = 'Delete';
-        deleteButton.addEventListener('click', async () => {
+        deleteButton.addEventListener('click', () => {
             batchesCompleted = batchesCompleted.filter(b => b !== batch);
-            await updateFileContent(FILE_PATHS.batchesCompleted, generateCSV(batchesCompleted), 'Update batches completed');
-            populateBatchesCompleted(batchesCompleted);
+            populateBatchesCompleted();
         });
         actionsCell.appendChild(deleteButton);
     });
 }
 
-function populateCurrentInventory(inventory) {
-    currentInventory = {};
-    inventory.forEach(item => {
-        currentInventory[item.key] = parseFloat(item.value);
-    });
-    populateReorderAlerts();
-}
-
-function populateReorderThresholds(thresholds) {
-    reorderThresholds = {};
-    thresholds.forEach(item => {
-        reorderThresholds[item.key] = parseFloat(item.value);
-    });
-}
-
-function populateTargetStock(targets) {
-    targetStock = {};
-    targets.forEach(item => {
-        targetStock[item.key] = parseFloat(item.value);
+function populateFinishedStock() {
+    const tbody = document.getElementById('finished-stock').querySelector('tbody');
+    tbody.innerHTML = '';
+    finishedStock.forEach(stock => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = stock.flavor;
+        row.insertCell(1).innerText = stock.numBars;
     });
 }
 
