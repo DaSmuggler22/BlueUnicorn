@@ -273,7 +273,9 @@ button[onclick="closeAuditForm()"]:hover {
     background-color: #bbb;
 }
 
-/* Additional Styles for Create Consumption Report and Projection */
+/* Add this to your CSS file */
+
+/* Form Container */
 .form-container {
     display: none;
     position: fixed;
@@ -331,3 +333,4 @@ button[onclick="closeAuditForm()"]:hover {
 .form-container .form-actions button:hover {
     background-color: #005f8a;
 }
+
