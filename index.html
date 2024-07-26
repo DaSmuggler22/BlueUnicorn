@@ -364,11 +364,11 @@
                     <input type="number" id="IncidentReports" name="IncidentReports" required>
                 </div>
                 <div class="form-group">
-                    <label for="TrashBags23Gallon">Trash Bags 23 Gallon:</label>
-                    <input type="number" id="TrashBags23Gallon" name="TrashBags23Gallon" required>
+                    <label for="TrashBags23Galon">Trash Bags 23 Galon:</label>
+                    <input type="number" id="TrashBags23Galon" name="TrashBags23Galon" required>
                 </div>
                 <div class="form-group">
-                    <label for="PHStrips">PH Strips:</label>
+                    <label for="PHStrips">PH-Strips:</label>
                     <input type="number" id="PHStrips" name="PHStrips" required>
                 </div>
                 <div class="form-group">
@@ -395,7 +395,7 @@
         </form>
     </div>
 
-    <!-- Consumption Form -->
+    <!-- Create Consumption Report Form -->
     <div id="consumption-form-container" class="form-container">
         <form id="consumption-form">
             <h2>Create Consumption Report</h2>
@@ -414,13 +414,13 @@
         </form>
     </div>
 
-    <!-- Projection Form -->
+    <!-- Create Projection Form -->
     <div id="projection-form-container" class="form-container">
         <form id="projection-form">
             <h2>Create Projection</h2>
             <div class="form-group">
-                <label for="projected-orders">Projected Orders (flavor:quantity, e.g., Chocolate:100):</label>
-                <textarea id="projected-orders" name="projected-orders" required></textarea>
+                <label for="projected-orders">Projected Order Quantities (comma-separated):</label>
+                <input type="text" id="projected-orders" name="projected-orders" placeholder="Mint:100, Raspberry:150, Chocolate:200" required>
             </div>
             <div class="form-actions">
                 <button type="submit">Generate Projection</button>
@@ -429,18 +429,18 @@
         </form>
     </div>
 
-    <!-- Shipment Form -->
+    <!-- Enter Shipment Form -->
     <div id="shipment-form-container" class="form-container">
         <form id="shipment-form">
             <h2>Enter Shipment</h2>
             <div class="form-group">
                 <label for="order-number">Order Number:</label>
                 <select id="order-number" name="order-number" required>
-                    <!-- Order numbers will be populated here -->
+                    <!-- Options will be populated dynamically -->
                 </select>
             </div>
             <div class="form-actions">
-                <button type="submit">Submit Shipment</button>
+                <button type="submit">Confirm Shipment</button>
                 <button type="button" onclick="closeShipmentForm()">Cancel</button>
             </div>
         </form>

@@ -1,179 +1,178 @@
-const token = 'Y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';
+// GitHub Repository Details
+const token = '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'; // Your GitHub token
 const owner = 'DaSmuggler22';
 const repo = 'BlueUnicorn';
 
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('enter-order-btn').addEventListener('click', openOrderForm);
-    document.getElementById('enter-batches-btn').addEventListener('click', openBatchForm);
-    document.getElementById('audit-inventory-btn').addEventListener('click', openAuditForm);
-    document.getElementById('create-consumption-report-btn').addEventListener('click', openConsumptionForm);
-    document.getElementById('create-projection-btn').addEventListener('click', openProjectionForm);
-    document.getElementById('enter-shipment-btn').addEventListener('click', openShipmentForm);
+// Data URLs
+const dataUrls = {
+    orders: `https://raw.githubusercontent.com/${owner}/${repo}/main/orders.csv`,
+    finishedStock: `https://raw.githubusercontent.com/${owner}/${repo}/main/finished_stock.csv`,
+    batchesCompleted: `https://raw.githubusercontent.com/${owner}/${repo}/main/batches_completed.csv`,
+    currentInventory: `https://raw.githubusercontent.com/${owner}/${repo}/main/current_inventory.csv`,
+    reorderThresholds: `https://raw.githubusercontent.com/${owner}/${repo}/main/reorder_thresholds.csv`,
+    targetStock: `https://raw.githubusercontent.com/${owner}/${repo}/main/target_stock.csv`
+};
 
-    document.getElementById('order-form').addEventListener('submit', handleOrderFormSubmit);
-    document.getElementById('batch-form').addEventListener('submit', handleBatchFormSubmit);
-    document.getElementById('audit-form').addEventListener('submit', handleAuditFormSubmit);
-    document.getElementById('consumption-form').addEventListener('submit', handleConsumptionFormSubmit);
-    document.getElementById('projection-form').addEventListener('submit', handleProjectionFormSubmit);
-    document.getElementById('shipment-form').addEventListener('submit', handleShipmentFormSubmit);
-
-    populateReorderAlerts();
-    populateOrdersToFulfill();
-    populateFinishedStock();
-    populateBatchesCompleted();
-});
-
-async function fetchCSV(file) {
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}`, {
-        headers: {
-            'Authorization': `token ${token}`,
-            'Accept': 'application/vnd.github.v3.raw'
-        }
-    });
-    const text = await response.text();
-    return text.split('\n').map(row => row.split(','));
+// Function to fetch CSV data
+async function fetchCsvData(url) {
+    const response = await fetch(url);
+    const data = await response.text();
+    return data;
 }
 
-async function updateCSV(file, data) {
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}`, {
-        headers: {
-            'Authorization': `token ${token}`,
-            'Accept': 'application/vnd.github.v3.raw'
-        }
-    });
-    const json = await response.json();
-    const content = btoa(data.map(row => row.join(',')).join('\n'));
-    const sha = json.sha;
-
-    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}`, {
+// Function to write CSV data
+async function writeCsvData(filename, data) {
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+    const base64Data = btoa(unescape(encodeURIComponent(data)));
+    const response = await fetch(url, {
         method: 'PUT',
         headers: {
             'Authorization': `token ${token}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            message: `Update ${file}`,
-            content: content,
-            sha: sha
+            message: `Update ${filename}`,
+            content: base64Data,
+            sha: await getFileSha(filename)
         })
+    });
+    return response.json();
+}
+
+// Function to get file SHA
+async function getFileSha(filename) {
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filename}`;
+    const response = await fetch(url, {
+        headers: {
+            'Authorization': `token ${token}`
+        }
+    });
+    const data = await response.json();
+    return data.sha;
+}
+
+// Function to parse CSV data into an array of objects
+function parseCsv(csv) {
+    const lines = csv.split('\n');
+    const headers = lines[0].split(',');
+    return lines.slice(1).map(line => {
+        const values = line.split(',');
+        return headers.reduce((obj, header, index) => {
+            obj[header] = values[index];
+            return obj;
+        }, {});
     });
 }
 
-function openOrderForm() {
-    document.getElementById('order-form-container').style.display = 'flex';
+// Function to convert array of objects into CSV data
+function convertToCsv(data) {
+    const headers = Object.keys(data[0]);
+    const lines = data.map(row => headers.map(header => row[header]).join(','));
+    return [headers.join(','), ...lines].join('\n');
 }
 
-function closeOrderForm() {
-    document.getElementById('order-form-container').style.display = 'none';
+// Function to open forms
+function openForm(formId) {
+    document.getElementById(formId).style.display = 'flex';
 }
 
+// Function to close forms
+function closeForm(formId) {
+    document.getElementById(formId).style.display = 'none';
+}
+
+// Form submission event listeners
+document.getElementById('order-form').addEventListener('submit', handleOrderFormSubmit);
+document.getElementById('batch-form').addEventListener('submit', handleBatchFormSubmit);
+document.getElementById('audit-form').addEventListener('submit', handleAuditFormSubmit);
+document.getElementById('consumption-form').addEventListener('submit', handleConsumptionFormSubmit);
+document.getElementById('projection-form').addEventListener('submit', handleProjectionFormSubmit);
+document.getElementById('shipment-form').addEventListener('submit', handleShipmentFormSubmit);
+
+// Handle Order Form Submit
 async function handleOrderFormSubmit(event) {
     event.preventDefault();
     const vendor = document.getElementById('vendor').value;
     const numBars = document.getElementById('numBars').value;
     const shipmentDate = document.getElementById('shipmentDate').value;
 
-    const data = await fetchCSV('orders.csv');
-    const orderNumber = data.length;
-    data.push([orderNumber, vendor, numBars, shipmentDate]);
+    const csvData = await fetchCsvData(dataUrls.orders);
+    const orders = parseCsv(csvData);
+    const newOrder = {
+        'Order #': orders.length + 1,
+        Vendor: vendor,
+        '# of Bars': numBars,
+        'Shipment Date': shipmentDate
+    };
+    orders.push(newOrder);
 
-    await updateCSV('orders.csv', data);
-
-    closeOrderForm();
+    await writeCsvData('orders.csv', convertToCsv(orders));
+    closeForm('order-form-container');
     populateOrdersToFulfill();
 }
 
-function openBatchForm() {
-    document.getElementById('batch-form-container').style.display = 'flex';
-}
-
-function closeBatchForm() {
-    document.getElementById('batch-form-container').style.display = 'none';
-}
-
+// Handle Batch Form Submit
 async function handleBatchFormSubmit(event) {
     event.preventDefault();
     const flavor = document.getElementById('flavor').value;
     const quantity = document.getElementById('quantity').value;
     const date = document.getElementById('date').value;
 
-    const data = await fetchCSV('batches_completed.csv');
-    data.push([flavor, quantity, date]);
+    const csvData = await fetchCsvData(dataUrls.batchesCompleted);
+    const batches = parseCsv(csvData);
+    const newBatch = { Flavor: flavor, Quantity: quantity, Date: date };
+    batches.push(newBatch);
 
-    await updateCSV('batches_completed.csv', data);
-
-    updateCurrentInventory(flavor, quantity);
-    closeBatchForm();
+    await writeCsvData('batches_completed.csv', convertToCsv(batches));
+    await updateCurrentInventory(flavor, quantity);
+    closeForm('batch-form-container');
     populateBatchesCompleted();
 }
 
-function openAuditForm() {
-    document.getElementById('audit-form-container').style.display = 'flex';
-}
-
-function closeAuditForm() {
-    document.getElementById('audit-form-container').style.display = 'none';
-}
-
+// Handle Audit Form Submit
 async function handleAuditFormSubmit(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
-    const data = [];
+    const currentInventory = {};
     for (let [key, value] of formData.entries()) {
         currentInventory[key] = parseFloat(value);
-        data.push([key, parseFloat(value)]);
     }
-    await updateCSV('current_inventory.csv', data);
 
-    closeAuditForm();
+    await writeCsvData('current_inventory.csv', convertToCsv([currentInventory]));
+    closeForm('audit-form-container');
     populateReorderAlerts();
 }
 
-function openConsumptionForm() {
-    document.getElementById('consumption-form-container').style.display = 'flex';
-}
-
-function closeConsumptionForm() {
-    document.getElementById('consumption-form-container').style.display = 'none';
-}
-
+// Handle Consumption Form Submit
 async function handleConsumptionFormSubmit(event) {
     event.preventDefault();
     const startDate = document.getElementById('start-date').value;
     const endDate = document.getElementById('end-date').value;
 
-    const data = await fetchCSV('batches_completed.csv');
-    const filteredBatches = data.filter(batch => {
-        const batchDate = new Date(batch[2]);
+    const csvData = await fetchCsvData(dataUrls.batchesCompleted);
+    const batches = parseCsv(csvData);
+    const filteredBatches = batches.filter(batch => {
+        const batchDate = new Date(batch.Date);
         return batchDate >= new Date(startDate) && batchDate <= new Date(endDate);
     });
 
     const consumptionReport = {};
     filteredBatches.forEach(batch => {
-        const flavor = batch[0];
-        const quantity = parseFloat(batch[1]);
-        const ingredientsUsage = getIngredientsUsage(flavor);
+        const ingredientsUsage = getIngredientsUsage(batch.Flavor);
         for (const [ingredient, usage] of Object.entries(ingredientsUsage)) {
             if (!consumptionReport[ingredient]) {
                 consumptionReport[ingredient] = 0;
             }
-            consumptionReport[ingredient] += usage * (quantity / 120);
+            consumptionReport[ingredient] += usage * (batch.Quantity / 120);
         }
     });
 
-    console.log(consumptionReport);
-    closeConsumptionForm();
-    // Display the consumption report as needed
+    // Display the consumption report
+    displayConsumptionReport(consumptionReport, startDate, endDate);
+    closeForm('consumption-form-container');
 }
 
-function openProjectionForm() {
-    document.getElementById('projection-form-container').style.display = 'flex';
-}
-
-function closeProjectionForm() {
-    document.getElementById('projection-form-container').style.display = 'none';
-}
-
+// Handle Projection Form Submit
 async function handleProjectionFormSubmit(event) {
     event.preventDefault();
     const projectedOrders = document.getElementById('projected-orders').value.split(',').reduce((acc, curr) => {
@@ -193,125 +192,135 @@ async function handleProjectionFormSubmit(event) {
         }
     }
 
-    console.log(projectionReport);
-    closeProjectionForm();
-    // Display the projection report as needed
+    // Display the projection report
+    displayProjectionReport(projectionReport);
+    closeForm('projection-form-container');
 }
 
-function openShipmentForm() {
-    document.getElementById('shipment-form-container').style.display = 'flex';
-    populateOrderDropdown();
-}
-
-function closeShipmentForm() {
-    document.getElementById('shipment-form-container').style.display = 'none';
-}
-
+// Handle Shipment Form Submit
 async function handleShipmentFormSubmit(event) {
     event.preventDefault();
     const orderNumber = document.getElementById('order-number').value;
 
-    const order = ordersToFulfill.find(o => o.orderNumber == orderNumber);
+    const csvData = await fetchCsvData(dataUrls.orders);
+    let orders = parseCsv(csvData);
+    const order = orders.find(o => o['Order #'] == orderNumber);
     if (order) {
-        updateFinishedStock(order.vendor, order.numBars);
-        ordersToFulfill = ordersToFulfill.filter(o => o.orderNumber != orderNumber);
+        await updateFinishedStock(order.Vendor, order['# of Bars']);
+        orders = orders.filter(o => o['Order #'] != orderNumber);
     }
 
-    closeShipmentForm();
+    await writeCsvData('orders.csv', convertToCsv(orders));
+    closeForm('shipment-form-container');
     populateOrdersToFulfill();
     populateFinishedStock();
 }
 
-function populateOrderDropdown() {
-    const orderDropdown = document.getElementById('order-number');
-    orderDropdown.innerHTML = ordersToFulfill.map(order => `<option value="${order.orderNumber}">${order.orderNumber}</option>`).join('');
+// Utility functions for ingredient usage
+function getIngredientsUsage(flavor) {
+    const usage = {
+        "Mint Chocolate": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
+        "Raspberry": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
+        "Double Chocolate": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
+    };
+    return usage[flavor];
 }
 
-function updateFinishedStock(vendor, numBars) {
-    const stockEntry = finishedStock.find(stock => stock.vendor == vendor);
+// Update finished stock based on shipment
+async function updateFinishedStock(vendor, numBars) {
+    const csvData = await fetchCsvData(dataUrls.finishedStock);
+    const stock = parseCsv(csvData);
+    const stockEntry = stock.find(entry => entry.Vendor === vendor);
     if (stockEntry) {
-        stockEntry.numBars = parseInt(stockEntry.numBars) + parseInt(numBars);
-    } else {
-        finishedStock.push({ vendor, numBars });
+        stockEntry['# of Bars'] = Math.max(0, parseInt(stockEntry['# of Bars']) - numBars);
     }
-    updateCSV('finished_stock.csv', finishedStock.map(stock => [stock.vendor, stock.numBars]));
+    await writeCsvData('finished_stock.csv', convertToCsv(stock));
+    populateFinishedStock();
 }
 
+// Update current inventory based on batch completion
 async function updateCurrentInventory(flavor, quantity) {
-    const data = await fetchCSV('current_inventory.csv');
+    const csvData = await fetchCsvData(dataUrls.currentInventory);
+    const inventory = parseCsv(csvData);
     const ingredientsUsage = getIngredientsUsage(flavor);
-    data.forEach(inventory => {
-        const ingredient = inventory[0];
-        if (ingredientsUsage[ingredient]) {
-            inventory[1] = parseFloat(inventory[1]) - (ingredientsUsage[ingredient] * (quantity / 120));
+    const usageMultiplier = quantity / 120; // 120 bars per batch
+    for (const [ingredient, usage] of Object.entries(ingredientsUsage)) {
+        if (inventory[0][ingredient] !== undefined) {
+            inventory[0][ingredient] -= usage * usageMultiplier;
         }
-    });
-    await updateCSV('current_inventory.csv', data);
+    }
+    await writeCsvData('current_inventory.csv', convertToCsv(inventory));
     populateReorderAlerts();
 }
 
+// Populate Orders to Fulfill
 async function populateOrdersToFulfill() {
-    const data = await fetchCSV('orders.csv');
+    const csvData = await fetchCsvData(dataUrls.orders);
+    const orders = parseCsv(csvData);
     const tbody = document.getElementById('orders-to-fulfill').querySelector('tbody');
     tbody.innerHTML = '';
-    data.forEach(order => {
+    orders.forEach(order => {
         const row = tbody.insertRow();
-        row.insertCell(0).innerText = order[0];
-        row.insertCell(1).innerText = order[1];
-        row.insertCell(2).innerText = order[2];
-        row.insertCell(3).innerText = order[3];
+        row.insertCell(0).innerText = order['Order #'];
+        row.insertCell(1).innerText = order.Vendor;
+        row.insertCell(2).innerText = order['# of Bars'];
+        row.insertCell(3).innerText = order['Shipment Date'];
         const actionsCell = row.insertCell(4);
         const deleteButton = document.createElement('button');
         deleteButton.innerText = 'Delete';
         deleteButton.addEventListener('click', async () => {
-            const newData = data.filter(o => o[0] !== order[0]);
-            await updateCSV('orders.csv', newData);
+            orders = orders.filter(o => o['Order #'] !== order['Order #']);
+            await writeCsvData('orders.csv', convertToCsv(orders));
             populateOrdersToFulfill();
         });
         actionsCell.appendChild(deleteButton);
     });
 }
 
-async function populateFinishedStock() {
-    const data = await fetchCSV('finished_stock.csv');
-    const tbody = document.getElementById('finished-stock').querySelector('tbody');
-    tbody.innerHTML = '';
-    data.forEach(stock => {
-        const row = tbody.insertRow();
-        row.insertCell(0).innerText = stock[0];
-        row.insertCell(1).innerText = stock[1];
-    });
-}
-
+// Populate Batches Completed
 async function populateBatchesCompleted() {
-    const data = await fetchCSV('batches_completed.csv');
+    const csvData = await fetchCsvData(dataUrls.batchesCompleted);
+    const batches = parseCsv(csvData);
     const tbody = document.getElementById('batches-completed').querySelector('tbody');
     tbody.innerHTML = '';
-    data.forEach(batch => {
+    batches.forEach(batch => {
         const row = tbody.insertRow();
-        row.insertCell(0).innerText = batch[0];
-        row.insertCell(1).innerText = batch[1];
-        row.insertCell(2).innerText = batch[2];
+        row.insertCell(0).innerText = batch.Flavor;
+        row.insertCell(1).innerText = batch.Quantity;
+        row.insertCell(2).innerText = batch.Date;
         const actionsCell = row.insertCell(3);
         const deleteButton = document.createElement('button');
         deleteButton.innerText = 'Delete';
         deleteButton.addEventListener('click', async () => {
-            const newData = data.filter(b => b !== batch);
-            await updateCSV('batches_completed.csv', newData);
+            batches = batches.filter(b => b !== batch);
+            await writeCsvData('batches_completed.csv', convertToCsv(batches));
             populateBatchesCompleted();
         });
         actionsCell.appendChild(deleteButton);
     });
 }
 
+// Populate Finished Stock
+async function populateFinishedStock() {
+    const csvData = await fetchCsvData(dataUrls.finishedStock);
+    const stock = parseCsv(csvData);
+    const tbody = document.getElementById('finished-stock').querySelector('tbody');
+    tbody.innerHTML = '';
+    stock.forEach(entry => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = entry.Flavor;
+        row.insertCell(1).innerText = entry['# of Bars'];
+    });
+}
+
+// Populate Reorder Alerts
 async function populateReorderAlerts() {
-    const data = await fetchCSV('current_inventory.csv');
+    const csvData = await fetchCsvData(dataUrls.currentInventory);
+    const inventory = parseCsv(csvData);
     const tbody = document.getElementById('reorder-alerts-details');
     tbody.innerHTML = '';
     let id = 1;
-    data.forEach(inventory => {
-        const ingredient = inventory[0];
-        const currentStock = parseFloat(inventory[1]);
+    for (const [ingredient, currentStock] of Object.entries(inventory[0])) {
         const row = tbody.insertRow();
         row.insertCell(0).innerText = id++;
         row.insertCell(1).innerText = ingredient;
@@ -329,5 +338,32 @@ async function populateReorderAlerts() {
         } else {
             idCell.style.backgroundColor = 'green';
         }
-    });
+    }
+}
+
+// Display Consumption Report
+function displayConsumptionReport(report, startDate, endDate) {
+    let reportWindow = window.open('', '_blank');
+    reportWindow.document.write('<html><head><title>Consumption Report</title></head><body>');
+    reportWindow.document.write('<h1>Consumption Report</h1>');
+    reportWindow.document.write(`<p>Period: ${startDate} to ${endDate}</p>`);
+    reportWindow.document.write('<table border="1"><tr><th>Ingredient</th><th>Kg Used</th></tr>');
+    for (const [ingredient, kgUsed] of Object.entries(report)) {
+        reportWindow.document.write(`<tr><td>${ingredient}</td><td>${kgUsed.toFixed(2)}</td></tr>`);
+    }
+    reportWindow.document.write('</table></body></html>');
+    reportWindow.document.close();
+}
+
+// Display Projection Report
+function displayProjectionReport(report) {
+    let reportWindow = window.open('', '_blank');
+    reportWindow.document.write('<html><head><title>Projection Report</title></head><body>');
+    reportWindow.document.write('<h1>Projection Report</h1>');
+    reportWindow.document.write('<table border="1"><tr><th>Ingredient</th><th>Kg Required</th></tr>');
+    for (const [ingredient, kgRequired] of Object.entries(report)) {
+        reportWindow.document.write(`<tr><td>${ingredient}</td><td>${kgRequired.toFixed(2)}</td></tr>`);
+    }
+    reportWindow.document.write('</table></body></html>');
+    reportWindow.document.close();
 }
