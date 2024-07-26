@@ -1,3 +1,7 @@
+const token = 'Y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';
+const owner = 'DaSmuggler22';
+const repo = 'BlueUnicorn';
+
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('enter-order-btn').addEventListener('click', openOrderForm);
     document.getElementById('enter-batches-btn').addEventListener('click', openBatchForm);
@@ -19,6 +23,42 @@ document.addEventListener('DOMContentLoaded', () => {
     populateBatchesCompleted();
 });
 
+async function fetchCSV(file) {
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}`, {
+        headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3.raw'
+        }
+    });
+    const text = await response.text();
+    return text.split('\n').map(row => row.split(','));
+}
+
+async function updateCSV(file, data) {
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}`, {
+        headers: {
+            'Authorization': `token ${token}`,
+            'Accept': 'application/vnd.github.v3.raw'
+        }
+    });
+    const json = await response.json();
+    const content = btoa(data.map(row => row.join(',')).join('\n'));
+    const sha = json.sha;
+
+    await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${file}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `token ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            message: `Update ${file}`,
+            content: content,
+            sha: sha
+        })
+    });
+}
+
 function openOrderForm() {
     document.getElementById('order-form-container').style.display = 'flex';
 }
@@ -27,14 +67,17 @@ function closeOrderForm() {
     document.getElementById('order-form-container').style.display = 'none';
 }
 
-function handleOrderFormSubmit(event) {
+async function handleOrderFormSubmit(event) {
     event.preventDefault();
     const vendor = document.getElementById('vendor').value;
     const numBars = document.getElementById('numBars').value;
     const shipmentDate = document.getElementById('shipmentDate').value;
 
-    const orderNumber = ordersToFulfill.length + 1;
-    ordersToFulfill.push({ orderNumber, vendor, numBars, shipmentDate });
+    const data = await fetchCSV('orders.csv');
+    const orderNumber = data.length;
+    data.push([orderNumber, vendor, numBars, shipmentDate]);
+
+    await updateCSV('orders.csv', data);
 
     closeOrderForm();
     populateOrdersToFulfill();
@@ -48,13 +91,17 @@ function closeBatchForm() {
     document.getElementById('batch-form-container').style.display = 'none';
 }
 
-function handleBatchFormSubmit(event) {
+async function handleBatchFormSubmit(event) {
     event.preventDefault();
     const flavor = document.getElementById('flavor').value;
     const quantity = document.getElementById('quantity').value;
     const date = document.getElementById('date').value;
 
-    batchesCompleted.push({ flavor, quantity, date });
+    const data = await fetchCSV('batches_completed.csv');
+    data.push([flavor, quantity, date]);
+
+    await updateCSV('batches_completed.csv', data);
+
     updateCurrentInventory(flavor, quantity);
     closeBatchForm();
     populateBatchesCompleted();
@@ -68,12 +115,16 @@ function closeAuditForm() {
     document.getElementById('audit-form-container').style.display = 'none';
 }
 
-function handleAuditFormSubmit(event) {
+async function handleAuditFormSubmit(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
+    const data = [];
     for (let [key, value] of formData.entries()) {
         currentInventory[key] = parseFloat(value);
+        data.push([key, parseFloat(value)]);
     }
+    await updateCSV('current_inventory.csv', data);
+
     closeAuditForm();
     populateReorderAlerts();
 }
@@ -86,24 +137,27 @@ function closeConsumptionForm() {
     document.getElementById('consumption-form-container').style.display = 'none';
 }
 
-function handleConsumptionFormSubmit(event) {
+async function handleConsumptionFormSubmit(event) {
     event.preventDefault();
     const startDate = document.getElementById('start-date').value;
     const endDate = document.getElementById('end-date').value;
 
-    const filteredBatches = batchesCompleted.filter(batch => {
-        const batchDate = new Date(batch.date);
+    const data = await fetchCSV('batches_completed.csv');
+    const filteredBatches = data.filter(batch => {
+        const batchDate = new Date(batch[2]);
         return batchDate >= new Date(startDate) && batchDate <= new Date(endDate);
     });
 
     const consumptionReport = {};
     filteredBatches.forEach(batch => {
-        const ingredientsUsage = getIngredientsUsage(batch.flavor);
+        const flavor = batch[0];
+        const quantity = parseFloat(batch[1]);
+        const ingredientsUsage = getIngredientsUsage(flavor);
         for (const [ingredient, usage] of Object.entries(ingredientsUsage)) {
             if (!consumptionReport[ingredient]) {
                 consumptionReport[ingredient] = 0;
             }
-            consumptionReport[ingredient] += usage * (batch.quantity / 120);
+            consumptionReport[ingredient] += usage * (quantity / 120);
         }
     });
 
@@ -120,7 +174,7 @@ function closeProjectionForm() {
     document.getElementById('projection-form-container').style.display = 'none';
 }
 
-function handleProjectionFormSubmit(event) {
+async function handleProjectionFormSubmit(event) {
     event.preventDefault();
     const projectedOrders = document.getElementById('projected-orders').value.split(',').reduce((acc, curr) => {
         const [flavor, quantity] = curr.split(':').map(s => s.trim());
@@ -153,7 +207,7 @@ function closeShipmentForm() {
     document.getElementById('shipment-form-container').style.display = 'none';
 }
 
-function handleShipmentFormSubmit(event) {
+async function handleShipmentFormSubmit(event) {
     event.preventDefault();
     const orderNumber = document.getElementById('order-number').value;
 
@@ -176,77 +230,88 @@ function populateOrderDropdown() {
 function updateFinishedStock(vendor, numBars) {
     const stockEntry = finishedStock.find(stock => stock.vendor == vendor);
     if (stockEntry) {
-        stockEntry.numBars -= numBars;
-        if (stockEntry.numBars < 0) {
-            stockEntry.numBars = 0;
-        }
+        stockEntry.numBars = parseInt(stockEntry.numBars) + parseInt(numBars);
+    } else {
+        finishedStock.push({ vendor, numBars });
     }
-    populateFinishedStock();
+    updateCSV('finished_stock.csv', finishedStock.map(stock => [stock.vendor, stock.numBars]));
 }
 
-function getIngredientsUsage(flavor) {
-    const usage = {
-        "Mint": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
-        "Raspberry": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 },
-        "Chocolate": { CanolaPro: 1670, Dextrin: 835, Chocolate: 3120, Erythritol: 465, Allulose: 465, Gelatin: 167, Salt: 12, CitricAcid: 16, DutchedCocoa: 91, CocoaButter: 160, Raspberry: 120, CookiesCream: 100, Mint: 100, RedSprinkles: 5, BrownSprinkles: 5, GreenSprinkles: 5, ClingWrap: 4, CanolaSpray: 0.5, Criscoe: 0.05, PumpkinProtein: 0.001, SunflowerProtein: 0.001, ShippingBoxes: 1, CartonsRaspberry: 12, CartonsMint: 12, CartonsChocolate: 12, WrappersRaspberry: 120, WrappersMint: 120, WrappersChocolate: 120, LabelStickerRaspberry: 1, LabelStickerMint: 1, LabelStickerChocolate: 1 }
-    };
-    return usage[flavor];
+async function updateCurrentInventory(flavor, quantity) {
+    const data = await fetchCSV('current_inventory.csv');
+    const ingredientsUsage = getIngredientsUsage(flavor);
+    data.forEach(inventory => {
+        const ingredient = inventory[0];
+        if (ingredientsUsage[ingredient]) {
+            inventory[1] = parseFloat(inventory[1]) - (ingredientsUsage[ingredient] * (quantity / 120));
+        }
+    });
+    await updateCSV('current_inventory.csv', data);
+    populateReorderAlerts();
 }
 
-function populateOrdersToFulfill() {
+async function populateOrdersToFulfill() {
+    const data = await fetchCSV('orders.csv');
     const tbody = document.getElementById('orders-to-fulfill').querySelector('tbody');
     tbody.innerHTML = '';
-    ordersToFulfill.forEach(order => {
+    data.forEach(order => {
         const row = tbody.insertRow();
-        row.insertCell(0).innerText = order.orderNumber;
-        row.insertCell(1).innerText = order.vendor;
-        row.insertCell(2).innerText = order.numBars;
-        row.insertCell(3).innerText = order.shipmentDate;
+        row.insertCell(0).innerText = order[0];
+        row.insertCell(1).innerText = order[1];
+        row.insertCell(2).innerText = order[2];
+        row.insertCell(3).innerText = order[3];
         const actionsCell = row.insertCell(4);
         const deleteButton = document.createElement('button');
         deleteButton.innerText = 'Delete';
-        deleteButton.addEventListener('click', () => {
-            ordersToFulfill = ordersToFulfill.filter(o => o.orderNumber !== order.orderNumber);
+        deleteButton.addEventListener('click', async () => {
+            const newData = data.filter(o => o[0] !== order[0]);
+            await updateCSV('orders.csv', newData);
             populateOrdersToFulfill();
         });
         actionsCell.appendChild(deleteButton);
     });
 }
 
-function populateBatchesCompleted() {
+async function populateFinishedStock() {
+    const data = await fetchCSV('finished_stock.csv');
+    const tbody = document.getElementById('finished-stock').querySelector('tbody');
+    tbody.innerHTML = '';
+    data.forEach(stock => {
+        const row = tbody.insertRow();
+        row.insertCell(0).innerText = stock[0];
+        row.insertCell(1).innerText = stock[1];
+    });
+}
+
+async function populateBatchesCompleted() {
+    const data = await fetchCSV('batches_completed.csv');
     const tbody = document.getElementById('batches-completed').querySelector('tbody');
     tbody.innerHTML = '';
-    batchesCompleted.forEach(batch => {
+    data.forEach(batch => {
         const row = tbody.insertRow();
-        row.insertCell(0).innerText = batch.flavor;
-        row.insertCell(1).innerText = batch.quantity;
-        row.insertCell(2).innerText = batch.date;
+        row.insertCell(0).innerText = batch[0];
+        row.insertCell(1).innerText = batch[1];
+        row.insertCell(2).innerText = batch[2];
         const actionsCell = row.insertCell(3);
         const deleteButton = document.createElement('button');
         deleteButton.innerText = 'Delete';
-        deleteButton.addEventListener('click', () => {
-            batchesCompleted = batchesCompleted.filter(b => b !== batch);
+        deleteButton.addEventListener('click', async () => {
+            const newData = data.filter(b => b !== batch);
+            await updateCSV('batches_completed.csv', newData);
             populateBatchesCompleted();
         });
         actionsCell.appendChild(deleteButton);
     });
 }
 
-function populateFinishedStock() {
-    const tbody = document.getElementById('finished-stock').querySelector('tbody');
-    tbody.innerHTML = '';
-    finishedStock.forEach(stock => {
-        const row = tbody.insertRow();
-        row.insertCell(0).innerText = stock.flavor;
-        row.insertCell(1).innerText = stock.numBars;
-    });
-}
-
-function populateReorderAlerts() {
+async function populateReorderAlerts() {
+    const data = await fetchCSV('current_inventory.csv');
     const tbody = document.getElementById('reorder-alerts-details');
     tbody.innerHTML = '';
     let id = 1;
-    for (const [ingredient, currentStock] of Object.entries(currentInventory)) {
+    data.forEach(inventory => {
+        const ingredient = inventory[0];
+        const currentStock = parseFloat(inventory[1]);
         const row = tbody.insertRow();
         row.insertCell(0).innerText = id++;
         row.insertCell(1).innerText = ingredient;
@@ -264,5 +329,5 @@ function populateReorderAlerts() {
         } else {
             idCell.style.backgroundColor = 'green';
         }
-    }
+    });
 }
