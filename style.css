@@ -1,41 +1,37 @@
 body {
     font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
 }
 
 .container {
-    width: 80%;
-    margin: 0 auto;
-    padding-top: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.form-group {
-    margin-bottom: 20px;
-}
-
-label {
+input[type="text"] {
+    padding: 10px;
+    margin: 10px 0;
+    width: calc(100% - 22px);
     display: block;
-    margin-bottom: 10px;
-}
-
-textarea {
-    width: 100%;
-    padding: 8px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
 }
 
 button {
     padding: 10px 20px;
-    font-size: 16px;
-    color: #fff;
-    background-color: #007bff;
+    background-color: #007BFF;
+    color: white;
     border: none;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
-    margin-right: 10px;
 }
 
 button:hover {
     background-color: #0056b3;
+}
+
+#message {
+    margin-top: 20px;
 }
