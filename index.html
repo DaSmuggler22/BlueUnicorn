@@ -3,57 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Update CSV Files on GitHub</title>
+    <title>GitHub API and CSV Update</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Update CSV Data on GitHub</h1>
-
-        <form id="orders">
-            <h2>Orders</h2>
-            <input type="text" id="orders_ingredient" placeholder="Ingredient">
-            <input type="text" id="orders_targetStock" placeholder="Target Stock">
-            <button type="button" onclick="submitData('orders.csv', this.parentNode)">Submit Orders</button>
-        </form>
-
-        <form id="finished_stock">
-            <h2>Finished Stock</h2>
-            <input type="text" id="finished_flavor" placeholder="Flavor">
-            <input type="text" id="finished_numBars" placeholder="Number of Bars">
-            <button type="button" onclick="submitData('finished_stock.csv', this.parentNode)">Submit Finished Stock</button>
-        </form>
-
-        <form id="batches_completed">
-            <h2>Batches Completed</h2>
-            <input type="text" id="batches_flavor" placeholder="Flavor">
-            <input type="text" id="batches_quantity" placeholder="Quantity">
-            <input type="text" id="batches_date" placeholder="Date">
-            <button type="button" onclick="submitData('batches_completed.csv', this.parentNode)">Submit Batches Completed</button>
-        </form>
-
-        <form id="current_inventory">
-            <h2>Current Inventory</h2>
-            <input type="text" id="inventory_ingredient" placeholder="Ingredient">
-            <input type="text" id="inventory_currentStock" placeholder="Current Stock">
-            <button type="button" onclick="submitData('current_inventory.csv', this.parentNode)">Submit Current Inventory</button>
-        </form>
-
-        <form id="reorder_thresholds">
-            <h2>Reorder Thresholds</h2>
-            <input type="text" id="thresholds_ingredient" placeholder="Ingredient">
-            <input type="text" id="thresholds_reorderThreshold" placeholder="Reorder Threshold">
-            <button type="button" onclick="submitData('reorder_thresholds.csv', this.parentNode)">Submit Reorder Thresholds</button>
-        </form>
-
-        <form id="target_stock">
-            <h2>Target Stock</h2>
-            <input type="text" id="target_ingredient" placeholder="Ingredient">
-            <input type="text" id="target_targetStock" placeholder="Target Stock">
-            <button type="button" onclick="submitData('target_stock.csv', this.parentNode)">Submit Target Stock</button>
-        </form>
-
+        <h1>GitHub API Token and CSV Update Test</h1>
+        <button onclick="testApiToken()">Test API Token</button>
         <div id="message"></div>
+
+        <form id="orders_form">
+            <h2>Update Orders</h2>
+            <input type="text" id="orderNumber" placeholder="Order Number">
+            <input type="text" id="vendor" placeholder="Vendor">
+            <input type="text" id="numBars" placeholder="Number of Bars">
+            <input type="text" id="shipmentDate" placeholder="Shipment Date">
+            <button type="button" onclick="submitCsvData('orders.csv', this)">Submit Orders</button>
+        </form>
+
+        <form id="finished_stock_form">
+            <h2>Update Finished Stock</h2>
+            <input type="text" id="flavor" placeholder="Flavor">
+            <input type="text" id="numBars" placeholder="Number of Bars">
+            <button type="button" onclick="submitCsvData('finished_stock.csv', this)">Submit Finished Stock</button>
+        </form>
+
+        <form id="batches_completed_form">
+            <h2>Batches Completed</h2>
+            <input type="text" id="flavor" placeholder="Flavor">
+            <input type="text" id="quantity" placeholder="Quantity">
+            <input type="text" id="date" placeholder="Date">
+            <button type="button" onclick="submitCsvData('batches_completed.csv', this)">Submit Batches Completed</button>
+        </form>
+
+        <form id="current_inventory_form">
+            <h2>Current Inventory</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="currentStock" placeholder="Current Stock">
+            <button type="button" onclick="submitCsvData('current_inventory.csv', this)">Submit Current Inventory</button>
+        </form>
+
+        <form id="reorder_thresholds_form">
+            <h2>Reorder Thresholds</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="reorderThreshold" placeholder="Reorder Threshold">
+            <button type="button" onclick="submitCsvData('reorder_thresholds.csv', this)">Submit Reorder Thresholds</button>
+        </form>
+
+        <form id="target_stock_form">
+            <h2>Target Stock</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="targetStock" placeholder="Target Stock">
+            <button type="button" onclick="submitCsvData('target_stock.csv', this)">Submit Target Stock</button>
+        </form>
+
+        <div id="csv_message"></div>
     </div>
     <script src="script.js"></script>
 </body>

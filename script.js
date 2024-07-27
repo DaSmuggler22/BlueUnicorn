@@ -1,26 +1,16 @@
-function submitData(filename, formElement) {
+async function submitCsvData(filename, formElement) {
     let content = "";
-    const inputs = formElement.querySelectorAll("input[type='text']"); // Get all text inputs in the form
+    const inputs = formElement.querySelectorAll("input[type='text']"); // Get all text inputs from the form
     inputs.forEach(input => {
         content += `${input.value},`;
     });
-    content = content.slice(0, -1) + '\n'; // Remove the last comma and add a newline
-    updateFile(filename, btoa(content)); // Assuming CSV needs base64 encoding
-}
+    content = content.slice(0, -1) + '\n'; // Remove the last comma and add newline
 
-async function updateFile(filename, content) {
+    const token = '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'; // Use environment variables in production
     const url = `https://api.github.com/repos/DaSmuggler22/BlueUnicorn/contents/${filename}`;
-    const token = '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'; // Important: Use environment variables in production to handle the token securely
-    try {
-        const getFileResponse = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-            }
-        });
-        const fileData = await getFileResponse.json();
-        const sha = fileData.sha; // Get the SHA of the file to update
 
-        const putResponse = await fetch(url, {
+    try {
+        const response = await fetch(url, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -28,21 +18,20 @@ async function updateFile(filename, content) {
             },
             body: JSON.stringify({
                 message: `Update ${filename}`,
-                content: content,
-                sha: sha
+                content: btoa(unescape(encodeURIComponent(content))) // Encode in base64
             })
         });
-        const data = await putResponse.json();
+        const data = await response.json();
         if (data.content) {
-            document.getElementById('message').innerText = 'Update successful!';
-            document.getElementById('message').style.color = 'green';
+            document.getElementById('csv_message').innerText = 'Update successful for ' + filename;
+            document.getElementById('csv_message').style.color = 'green';
         } else {
-            document.getElementById('message').innerText = 'Update failed!';
-            document.getElementById('message').style.color = 'red';
+            document.getElementById('csv_message').innerText = 'Update failed for ' + filename;
+            document.getElementById('csv_message').style.color = 'red';
         }
     } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('message').innerText = 'Update failed!';
-        document.getElementById('message').style.color = 'red';
+        console.error('Error updating CSV data:', error);
+        document.getElementById('csv_message').innerText = 'Network or other error: ' + error.message;
+        document.getElementById('csv_message').style.color = 'red';
     }
 }
