@@ -221,30 +221,6 @@
                     <input type="number" id="CocoaButter" name="CocoaButter" step="0.01" required>
                 </div>
                 <div class="form-group">
-                    <label for="Raspberry">Raspberry:</label>
-                    <input type="number" id="Raspberry" name="Raspberry" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="CookiesCream">Cookies & Cream:</label>
-                    <input type="number" id="CookiesCream" name="CookiesCream" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="Mint">Mint:</label>
-                    <input type="number" id="Mint" name="Mint" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="RedSprinkles">Red Sprinkles:</label>
-                    <input type="number" id="RedSprinkles" name="RedSprinkles" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="BrownSprinkles">Brown Sprinkles:</label>
-                    <input type="number" id="BrownSprinkles" name="BrownSprinkles" step="0.01" required>
-                </div>
-                <div class="form-group">
-                    <label for="GreenSprinkles">Green Sprinkles:</label>
-                    <input type="number" id="GreenSprinkles" name="GreenSprinkles" step="0.01" required>
-                </div>
-                <div class="form-group">
                     <label for="ClingWrap">Cling Wrap:</label>
                     <input type="number" id="ClingWrap" name="ClingWrap" step="0.01" required>
                 </div>
@@ -419,8 +395,8 @@
         <form id="projection-form">
             <h2>Create Projection</h2>
             <div class="form-group">
-                <label for="projected-orders">Projected Order Quantities (comma-separated):</label>
-                <input type="text" id="projected-orders" name="projected-orders" placeholder="Mint:100, Raspberry:150, Chocolate:200" required>
+                <label for="projected-orders">Projected Orders (comma separated):</label>
+                <input type="text" id="projected-orders" name="projected-orders" required>
             </div>
             <div class="form-actions">
                 <button type="submit">Generate Projection</button>
@@ -435,17 +411,14 @@
             <h2>Enter Shipment</h2>
             <div class="form-group">
                 <label for="order-number">Order Number:</label>
-                <select id="order-number" name="order-number" required>
-                    <!-- Options will be populated dynamically -->
-                </select>
+                <select id="order-number" name="order-number" required></select>
             </div>
             <div class="form-actions">
-                <button type="submit">Confirm Shipment</button>
+                <button type="submit">Submit Shipment</button>
                 <button type="button" onclick="closeShipmentForm()">Cancel</button>
             </div>
         </form>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
