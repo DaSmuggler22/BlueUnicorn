@@ -1,11 +1,11 @@
-function submitData() {
-    const orderNumber = document.getElementById('orderNumber').value;
-    const vendor = document.getElementById('vendor').value;
-    const numBars = document.getElementById('numBars').value;
-    const shipmentDate = document.getElementById('shipmentDate').value;
-
-    const content = `${orderNumber}, ${vendor}, ${numBars}, ${shipmentDate}\n`;
-    updateFile('orders.csv', btoa(content)); // Assume CSV needs base64 encoding
+function submitData(filename, formElement) {
+    let formData = new FormData(formElement);
+    let content = "";
+    for (let [key, value] of formData.entries()) {
+        content += `${value},`;
+    }
+    content = content.slice(0, -1) + '\n'; // Remove last comma and add a newline
+    updateFile(filename, btoa(content)); // Assuming CSV needs base64 encoding
 }
 
 async function updateFile(filename, content) {
@@ -26,11 +26,14 @@ async function updateFile(filename, content) {
         const data = await response.json();
         if (data.commit) {
             document.getElementById('message').innerText = 'Update successful!';
+            document.getElementById('message').style.color = 'green';
         } else {
             document.getElementById('message').innerText = 'Update failed!';
+            document.getElementById('message').style.color = 'red';
         }
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('message').innerText = 'Update failed!';
+        document.getElementById('message').style.color = 'red';
     }
 }

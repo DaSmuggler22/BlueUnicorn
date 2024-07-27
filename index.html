@@ -8,12 +8,51 @@
 </head>
 <body>
     <div class="container">
-        <h1>Update Orders CSV</h1>
-        <input type="text" id="orderNumber" placeholder="Order Number">
-        <input type="text" id="vendor" placeholder="Vendor">
-        <input type="text" id="numBars" placeholder="Number of Bars">
-        <input type="text" id="shipmentDate" placeholder="Shipment Date">
-        <button onclick="submitData()">Submit</button>
+        <h1>Update CSV Data on GitHub</h1>
+
+        <form id="orders">
+            <h2>Orders</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="targetStock" placeholder="Target Stock">
+            <button type="button" onclick="submitData('orders.csv', this.parentNode)">Submit Orders</button>
+        </form>
+
+        <form id="finished_stock">
+            <h2>Finished Stock</h2>
+            <input type="text" id="flavor" placeholder="Flavor">
+            <input type="text" id="numBars" placeholder="Number of Bars">
+            <button type="button" onclick="submitData('finished_stock.csv', this.parentNode)">Submit Finished Stock</button>
+        </form>
+
+        <form id="batches_completed">
+            <h2>Batches Completed</h2>
+            <input type="text" id="flavor" placeholder="Flavor">
+            <input type="text" id="quantity" placeholder="Quantity">
+            <input type="text" id="date" placeholder="Date">
+            <button type="button" onclick="submitData('batches_completed.csv', this.parentNode)">Submit Batches Completed</button>
+        </form>
+
+        <form id="current_inventory">
+            <h2>Current Inventory</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="currentStock" placeholder="Current Stock">
+            <button type="button" onclick="submitData('current_inventory.csv', this.parentNode)">Submit Current Inventory</button>
+        </form>
+
+        <form id="reorder_thresholds">
+            <h2>Reorder Thresholds</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="reorderThreshold" placeholder="Reorder Threshold">
+            <button type="button" onclick="submitData('reorder_thresholds.csv', this.parentNode)">Submit Reorder Thresholds</button>
+        </form>
+
+        <form id="target_stock">
+            <h2>Target Stock</h2>
+            <input type="text" id="ingredient" placeholder="Ingredient">
+            <input type="text" id="targetStock" placeholder="Target Stock">
+            <button type="button" onclick="submitData('target_stock.csv', this.parentNode)">Submit Target Stock</button>
+        </form>
+
         <div id="message"></div>
     </div>
     <script src="script.js"></script>
