@@ -1,0 +1,11 @@
+{
+  "name": "blueunicorn/docs-manager",
+  "description": "Packing Slips and Proof of Delivery generator with PDF and sequences",
+  "type": "project",
+  "require": {
+    "dompdf/dompdf": "^2.0"
+  },
+  "autoload": {
+    "psr-4": {}
+  }
+}
